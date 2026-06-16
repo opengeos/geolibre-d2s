@@ -84,6 +84,7 @@ app.add_middleware(
     # Must be explicit origins, not "*", when credentials are allowed.
     allow_origins=[
         "https://geolibre.app",
+        "https://viewer.geolibre.app",  # GeoLibre web viewer
         "http://localhost:5173",       # local dev
         "tauri://localhost",            # GeoLibre Desktop (macOS/Linux)
         "https://tauri.localhost",      # GeoLibre Desktop (Windows)
