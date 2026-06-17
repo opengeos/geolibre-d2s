@@ -116,7 +116,13 @@ export class PluginControl implements IControl, DeepLinkConsumer {
    * @param options - Configuration options for the control
    */
   constructor(options?: Partial<PluginControlOptions>) {
-    this._options = { ...DEFAULT_OPTIONS, ...options };
+    // Drop explicit `undefined` values so a caller passing an absent host
+    // capability (for example `serverUrl: undefined` or a missing
+    // `fetchArrayBuffer`) does not clobber the safe default with `undefined`.
+    const provided = Object.fromEntries(
+      Object.entries(options ?? {}).filter(([, value]) => value !== undefined),
+    ) as Partial<PluginControlOptions>;
+    this._options = { ...DEFAULT_OPTIONS, ...provided };
     this._state = {
       collapsed: this._options.collapsed,
       panelWidth: this._options.panelWidth,
