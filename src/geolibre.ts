@@ -30,7 +30,7 @@ function createControl(app: AppAPI): PluginControl {
     fetchArrayBuffer: app.fetchArrayBuffer
       ? (url) => app.fetchArrayBuffer!(url)
       : undefined,
-    fitBounds: app.fitBounds ? (bounds) => app.fitBounds!(bounds) : undefined,
+    fitBounds: makeFitBounds(app),
   });
 
   if (pendingState) {
@@ -38,6 +38,36 @@ function createControl(app: AppAPI): PluginControl {
   }
 
   return nextControl;
+}
+
+/**
+ * Resolve a `fitBounds` callback for the control, preferring the host's
+ * dedicated capability and falling back to the raw MapLibre map.
+ *
+ * Many hosts (including the web viewer) do not implement the optional
+ * `app.fitBounds`, which would leave the "Add selected to map" action unable to
+ * zoom to freshly added layers. When the host instead exposes `app.getMap`, we
+ * drive the map's own `fitBounds` directly. The map is resolved lazily inside
+ * the callback so it is read when the user adds layers (map ready) rather than
+ * at activation time (map may still be null).
+ *
+ * @param app The GeoLibre host API bound to this plugin's control.
+ * @returns A bounds-fitting callback, or `undefined` when no host capability can
+ *   move the viewport.
+ */
+function makeFitBounds(
+  app: AppAPI,
+): ((bounds: [number, number, number, number]) => void) | undefined {
+  if (app.fitBounds) {
+    return (bounds) => app.fitBounds!(bounds);
+  }
+  if (app.getMap) {
+    return (bounds) => {
+      const map = app.getMap!();
+      map?.fitBounds(bounds, { padding: 40, duration: 1000, maxZoom: 18 });
+    };
+  }
+  return undefined;
 }
 
 function isPluginState(value: unknown): value is Partial<PluginState> {
