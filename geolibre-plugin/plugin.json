@@ -1,6 +1,6 @@
 {
   "id": "geolibre-d2s",
-  "name": "GeoLibre D2S",
+  "name": "Data to Science (D2S)",
   "version": "0.1.0",
   "entry": "dist/index.js",
   "description": "Browse and view Data to Science (D2S) projects, flights, and data products.",
