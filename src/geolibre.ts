@@ -97,7 +97,7 @@ function isPluginState(value: unknown): value is Partial<PluginState> {
 export const plugin: GeoLibrePlugin<PluginControl> = {
   id: "geolibre-d2s",
   name: "Data to Science (D2S)",
-  version: "0.1.0",
+  version: "0.1.1",
   urlParameterNames: [D2S_SERVER_PARAM],
   activate(app) {
     control = control ?? createControl(app);
