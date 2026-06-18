@@ -7,6 +7,9 @@ import {
   isRasterDataType,
   loginFormBody,
   normalizeServerUrl,
+  percentileRescales,
+  rgbBandSelection,
+  titilerInfoUrl,
   titilerStatisticsUrl,
   titilerTileJsonUrl,
   vectorLayerName,
@@ -62,6 +65,75 @@ describe('titiler URLs', () => {
     expect(titilerStatisticsUrl('https://titiler.d2s.org', 'https://x/c.tif')).toBe(
       'https://titiler.d2s.org/cog/statistics?url=https%3A%2F%2Fx%2Fc.tif',
     );
+  });
+
+  it('builds an info URL', () => {
+    expect(titilerInfoUrl('https://titiler.d2s.org', 'https://x/c.tif')).toBe(
+      'https://titiler.d2s.org/cog/info?url=https%3A%2F%2Fx%2Fc.tif',
+    );
+  });
+
+  it('emits array params as repeated keys (band selection)', () => {
+    const url = titilerTileJsonUrl('https://titiler.d2s.org', 'https://x/c.tif', {
+      bidx: ['1', '2', '3'],
+    });
+    expect(url).toContain('bidx=1&bidx=2&bidx=3');
+  });
+});
+
+describe('rgbBandSelection', () => {
+  it('selects the first three bands for an untagged multispectral COG', () => {
+    expect(
+      rgbBandSelection({ count: 5, colorinterp: ['gray', 'undefined', 'undefined', 'undefined', 'undefined'] }),
+    ).toEqual(['1', '2', '3']);
+  });
+
+  it('leaves RGB COGs untouched (rendered natively by titiler)', () => {
+    expect(
+      rgbBandSelection({ count: 3, colorinterp: ['red', 'green', 'blue'] }),
+    ).toBeNull();
+  });
+
+  it('leaves RGBA COGs untouched so the alpha mask is preserved', () => {
+    expect(
+      rgbBandSelection({ count: 4, colorinterp: ['red', 'green', 'blue', 'alpha'] }),
+    ).toBeNull();
+  });
+
+  it('leaves single-band COGs untouched (rendered as grayscale)', () => {
+    expect(rgbBandSelection({ count: 1, colorinterp: ['gray'] })).toBeNull();
+  });
+
+  it('falls back to band count when colorinterp is absent', () => {
+    expect(rgbBandSelection({ count: 5 })).toEqual(['1', '2', '3']);
+    expect(rgbBandSelection({ count: 1 })).toBeNull();
+  });
+});
+
+describe('percentileRescales', () => {
+  const stats = {
+    b1: { min: -0.03, max: 0.8, percentile_2: 0.045, percentile_98: 0.098 },
+    b2: { min: 0, max: 0.9, percentile_2: 0.069, percentile_98: 0.14 },
+    b3: { min: 0, max: 1.1, percentile_2: 0.048, percentile_98: 0.147 },
+  };
+
+  it('builds a min,max string per band from the 2/98 percentiles', () => {
+    expect(percentileRescales(stats, ['1', '2', '3'])).toEqual([
+      '0.045,0.098',
+      '0.069,0.14',
+      '0.048,0.147',
+    ]);
+  });
+
+  it('falls back to min/max when percentiles are missing', () => {
+    expect(percentileRescales({ b1: { min: 0, max: 200 } }, ['1'])).toEqual([
+      '0,200',
+    ]);
+  });
+
+  it('returns null when a requested band has no usable stats', () => {
+    expect(percentileRescales(stats, ['1', '4'])).toBeNull();
+    expect(percentileRescales({ b1: { min: 5, max: 5 } }, ['1'])).toBeNull();
   });
 });
 
