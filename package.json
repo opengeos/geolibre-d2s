@@ -1,6 +1,6 @@
 {
   "name": "geolibre-d2s",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A GeoLibre plugin to browse and view Data to Science (D2S) projects, flights, and data products",
   "type": "module",
   "main": "./dist/index.cjs",
