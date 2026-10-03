@@ -6,6 +6,14 @@ import type { GeoLibreNativeLayerRegistration } from '../geolibre/host-api';
  */
 export interface PluginControlOptions {
   /**
+   * Hand the panel to a host dock instead of floating it over the map: the
+   * panel is built but not appended to the map container (read it with
+   * `getPanel()`), the toolbar button is hidden, and the floating header,
+   * click-outside collapse and anchoring are skipped. Defaults to false.
+   */
+  docked?: boolean;
+
+  /**
    * Whether the control panel should start collapsed (showing only the toggle button)
    * @default true
    */
@@ -63,6 +71,14 @@ export interface PluginControlOptions {
    * to `app.fetchArrayBuffer`; defaults to the global `fetch`.
    */
   fetchArrayBuffer?: (url: string) => Promise<ArrayBuffer>;
+
+  /**
+   * `fetch` for the cookie-authenticated D2S API (login, user, projects). Bound
+   * by the GeoLibre wrapper to `app.nativeFetch` on GeoLibre Desktop, whose
+   * webview drops the D2S session cookie as third-party; defaults to the
+   * global `fetch`.
+   */
+  sessionFetch?: typeof fetch;
 
   /**
    * Host callback to fit the map to `[west, south, east, north]` bounds. Bound

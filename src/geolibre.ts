@@ -13,11 +13,22 @@ import "./lib/styles/plugin-control.css";
 type AppAPI = GeoLibreAppAPI<PluginControl>;
 
 let control: PluginControl | null = null;
-let position: GeoLibreMapControlPosition = "top-left";
+// The panel docks in GeoLibre's side panel, so the toolbar button is hidden and
+// its corner only matters on hosts without a dock, which keep the default.
+const position: GeoLibreMapControlPosition = "top-left";
 let pendingState: Partial<PluginState> | null = null;
+let unregisterPanel: (() => void) | null = null;
+
+const PANEL_ID = "geolibre-d2s-panel";
+
+/** Whether the host offers GeoLibre's dockable side panel. */
+function hasDock(app: AppAPI): boolean {
+  return Boolean(app.registerRightPanel && app.openRightPanel);
+}
 
 function createControl(app: AppAPI): PluginControl {
   const nextControl = new PluginControl({
+    docked: hasDock(app),
     collapsed: pendingState?.collapsed ?? true,
     panelWidth: pendingState?.panelWidth ?? 320,
     title: "Data to Science (D2S)",
@@ -31,6 +42,11 @@ function createControl(app: AppAPI): PluginControl {
       ? (url) => app.fetchArrayBuffer!(url)
       : undefined,
     fitBounds: makeFitBounds(app),
+    // The desktop webview drops the D2S session cookie (third-party at
+    // tauri://localhost), so sign in through the host's native client there.
+    sessionFetch: app.nativeFetch
+      ? (input, init) => app.nativeFetch!(input, init)
+      : undefined,
   });
 
   if (pendingState) {
@@ -94,6 +110,48 @@ function isPluginState(value: unknown): value is Partial<PluginState> {
   return true;
 }
 
+/**
+ * Register the side panel that shows the control's panel element.
+ *
+ * @param app The GeoLibre host API.
+ */
+function registerPanel(app: AppAPI): void {
+  unregisterPanel?.();
+  unregisterPanel =
+    app.registerRightPanel?.({
+      id: PANEL_ID,
+      title: "Data to Science (D2S)",
+      dock: "replace-style",
+      defaultWidth: 340,
+      deactivatePluginOnClose: true,
+      render: (container) => {
+        const panel = control?.getPanel();
+        if (panel) container.replaceChildren(panel);
+        return () => {
+          if (panel?.parentElement === container) panel.remove();
+        };
+      },
+    }) ?? null;
+}
+
+/**
+ * Remove the control and its docked panel, caching the control's state.
+ *
+ * @param app The GeoLibre host API.
+ */
+function teardown(app: AppAPI): void {
+  if (control) {
+    pendingState = control.getState();
+    app.removeMapControl(control);
+    control = null;
+  }
+  if (unregisterPanel) {
+    app.closeRightPanel?.(PANEL_ID);
+    unregisterPanel();
+    unregisterPanel = null;
+  }
+}
+
 export const plugin: GeoLibrePlugin<PluginControl> = {
   id: "geolibre-d2s",
   name: "Data to Science (D2S)",
@@ -106,6 +164,15 @@ export const plugin: GeoLibrePlugin<PluginControl> = {
       control = null;
       return false;
     }
+    if (!hasDock(app)) return;
+    // The panel docks; the control stays on the map for the plugin's lifetime
+    // because the layers it adds are registered through it. Another docked
+    // panel displacing this one only releases the panel element.
+    registerPanel(app);
+    if (!app.openRightPanel!(PANEL_ID)) {
+      teardown(app);
+      return false;
+    }
   },
   // Deep link: GeoLibre auto-activates this plugin when a URL carries the
   // parameter it owns and dispatches the parsed parameters here, e.g.
@@ -114,25 +181,7 @@ export const plugin: GeoLibrePlugin<PluginControl> = {
     if (control) maybeHandleDeepLink(control, params);
   },
   deactivate(app) {
-    if (!control) return;
-    pendingState = control.getState();
-    app.removeMapControl(control);
-    control = null;
-  },
-  getMapControlPosition() {
-    return position;
-  },
-  setMapControlPosition(app, nextPosition) {
-    position = nextPosition;
-    if (!control) return;
-
-    app.removeMapControl(control);
-    const added = app.addMapControl(control, position);
-    if (!added) {
-      pendingState = control.getState();
-      control = null;
-      return false;
-    }
+    teardown(app);
   },
   getProjectState() {
     return control?.getState() ?? pendingState ?? undefined;
