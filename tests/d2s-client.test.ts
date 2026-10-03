@@ -215,18 +215,26 @@ describe('geojsonBounds', () => {
 
 describe('D2SClient session fetch', () => {
   it('signs in and reads the user through the injected fetch', async () => {
-    const calls: Array<{ url: string; method: string }> = [];
+    const calls: Array<{ url: string; method: string; credentials?: RequestCredentials }> = [];
     const sessionFetch: typeof fetch = async (input, init) => {
       const url = String(input);
-      calls.push({ url, method: init?.method ?? 'GET' });
+      calls.push({ url, method: init?.method ?? 'GET', credentials: init?.credentials });
       if (url.endsWith('/auth/access-token')) return new Response('200');
       return Response.json({ id: 'u1', api_access_token: 'key-123' });
     };
     const client = new D2SClient('https://d2s.example/', undefined, sessionFetch);
     await client.login('user@example.com', 'secret');
     expect(calls).toEqual([
-      { url: 'https://d2s.example/api/v1/auth/access-token', method: 'POST' },
-      { url: 'https://d2s.example/api/v1/users/current', method: 'GET' },
+      {
+        url: 'https://d2s.example/api/v1/auth/access-token',
+        method: 'POST',
+        credentials: 'include',
+      },
+      {
+        url: 'https://d2s.example/api/v1/users/current',
+        method: 'GET',
+        credentials: 'include',
+      },
     ]);
     expect(client.apiKey).toBe('key-123');
   });
