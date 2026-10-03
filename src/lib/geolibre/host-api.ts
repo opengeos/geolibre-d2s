@@ -165,6 +165,11 @@ export interface GeoLibreAppAPI<TControl extends GeoLibreControl = GeoLibreContr
    */
   fetchArrayBuffer?: (url: string) => Promise<ArrayBuffer>;
   /**
+   * GeoLibre Desktop only: a `fetch` through the native HTTP client, with no
+   * CORS and a cookie jar kept for the app session. Undefined elsewhere.
+   */
+  nativeFetch?: typeof fetch;
+  /**
    * Add a GeoJSON `FeatureCollection` as a host-managed layer that appears in
    * the layer panel. `sourcePath` is an optional provenance hint (for example,
    * the originating URL).

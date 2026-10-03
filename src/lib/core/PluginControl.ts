@@ -45,6 +45,7 @@ const DEFAULT_OPTIONS: Required<PluginControlOptions> = {
   registerNativeLayer: () => undefined,
   unregisterNativeLayer: () => undefined,
   fetchArrayBuffer: async (url: string) => (await fetch(url)).arrayBuffer(),
+  sessionFetch: (input, init) => fetch(input, init),
   fitBounds: () => undefined,
   serverUrl: DEFAULT_D2S_SERVER,
   titilerUrl: DEFAULT_TITILER_URL,
@@ -327,7 +328,7 @@ export class PluginControl implements IControl, DeepLinkConsumer {
     }
 
     this.setState({ data: { ...this._state.data, serverUrl: server } });
-    this._client = new D2SClient(server, this._options.titilerUrl);
+    this._client = new D2SClient(server, this._options.titilerUrl, this._options.sessionFetch);
 
     this._setBusy(true);
     this._setStatus('Signing in...');

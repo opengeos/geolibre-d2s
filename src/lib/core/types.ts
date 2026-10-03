@@ -65,6 +65,14 @@ export interface PluginControlOptions {
   fetchArrayBuffer?: (url: string) => Promise<ArrayBuffer>;
 
   /**
+   * `fetch` for the cookie-authenticated D2S API (login, user, projects). Bound
+   * by the GeoLibre wrapper to `app.nativeFetch` on GeoLibre Desktop, whose
+   * webview drops the D2S session cookie as third-party; defaults to the
+   * global `fetch`.
+   */
+  sessionFetch?: typeof fetch;
+
+  /**
    * Host callback to fit the map to `[west, south, east, north]` bounds. Bound
    * by the GeoLibre wrapper to `app.fitBounds`; defaults to a no-op.
    */

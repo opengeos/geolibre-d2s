@@ -31,6 +31,11 @@ function createControl(app: AppAPI): PluginControl {
       ? (url) => app.fetchArrayBuffer!(url)
       : undefined,
     fitBounds: makeFitBounds(app),
+    // The desktop webview drops the D2S session cookie (third-party at
+    // tauri://localhost), so sign in through the host's native client there.
+    sessionFetch: app.nativeFetch
+      ? (input, init) => app.nativeFetch!(input, init)
+      : undefined,
   });
 
   if (pendingState) {

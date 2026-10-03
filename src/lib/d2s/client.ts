@@ -5,6 +5,11 @@
  * `fetch`) and separately fetches an `API_KEY` used to stream Cloud-Optimized
  * GeoTIFFs (via titiler) and FlatGeobuf files directly.
  *
+ * The session requests take an injectable `fetch`. GeoLibre Desktop passes its
+ * native `app.nativeFetch`: the webview runs at `tauri://localhost`, so the D2S
+ * cookie is third-party there and WebKit drops it, turning a successful login
+ * into "Session expired" on the next request.
+ *
  * The pure URL/name builders and predicates are exported separately so they can
  * be unit-tested without a network or DOM.
  */
@@ -246,10 +251,24 @@ export class D2SClient {
   readonly server: string;
   readonly titilerUrl: string;
   private _apiKey: string | null = null;
+  private readonly _sessionFetch: typeof fetch;
 
-  constructor(server: string, titilerUrl: string = DEFAULT_TITILER_URL) {
+  /**
+   * @param server D2S instance URL.
+   * @param titilerUrl titiler instance used to tile Cloud-Optimized GeoTIFFs.
+   * @param sessionFetch `fetch` for the cookie-authenticated D2S API calls;
+   *   defaults to the global `fetch`.
+   */
+  constructor(
+    server: string,
+    titilerUrl: string = DEFAULT_TITILER_URL,
+    sessionFetch?: typeof fetch,
+  ) {
     this.server = normalizeServerUrl(server);
     this.titilerUrl = normalizeServerUrl(titilerUrl);
+    // Resolved per call so a stubbed global fetch (tests) is picked up, and
+    // never invoked unbound (the global fetch throws without its receiver).
+    this._sessionFetch = sessionFetch ?? ((input, init) => fetch(input, init));
   }
 
   /** The API key fetched after login, or null when not yet available. */
@@ -264,7 +283,7 @@ export class D2SClient {
 
   /** Credentialed GET returning parsed JSON; maps 401 to {@link D2SAuthError}. */
   private async getJson<T>(path: string): Promise<T> {
-    const response = await fetch(this.apiUrl(path), {
+    const response = await this._sessionFetch(this.apiUrl(path), {
       method: "GET",
       credentials: "include",
       headers: { Accept: "application/json" },
@@ -284,7 +303,7 @@ export class D2SClient {
    * account does not have one yet).
    */
   async login(email: string, password: string): Promise<D2SUser> {
-    const response = await fetch(this.apiUrl("/api/v1/auth/access-token"), {
+    const response = await this._sessionFetch(this.apiUrl("/api/v1/auth/access-token"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
