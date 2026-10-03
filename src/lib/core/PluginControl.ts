@@ -36,6 +36,7 @@ import type {
  * binds them to the real host APIs when the plugin runs inside GeoLibre.
  */
 const DEFAULT_OPTIONS: Required<PluginControlOptions> = {
+  docked: false,
   collapsed: true,
   position: 'top-left',
   title: 'Data to Science (D2S)',
@@ -144,6 +145,9 @@ export class PluginControl implements IControl, DeepLinkConsumer {
     this._container = this._createContainer();
     this._panel = this._createPanel();
 
+    // A docked panel waits for the host to adopt it through getPanel().
+    if (this._options.docked) return this._container;
+
     // Append panel to map container for independent positioning (avoids overlap with other controls)
     this._mapContainer.appendChild(this._panel);
 
@@ -196,6 +200,16 @@ export class PluginControl implements IControl, DeepLinkConsumer {
     this._panel = undefined;
     this._status = undefined;
     this._eventHandlers.clear();
+  }
+
+  /**
+   * The control's panel element, once `onAdd` has built it. A docked control
+   * never attaches it, so the host moves it into its dock.
+   *
+   * @returns The panel element, or undefined while the control is not mounted.
+   */
+  getPanel(): HTMLElement | undefined {
+    return this._panel;
   }
 
   /**
@@ -766,8 +780,8 @@ export class PluginControl implements IControl, DeepLinkConsumer {
   private _createContainer(): HTMLElement {
     const container = document.createElement('div');
     container.className = `maplibregl-ctrl maplibregl-ctrl-group plugin-control${
-      this._options.className ? ` ${this._options.className}` : ''
-    }`;
+      this._options.docked ? ' plugin-control--docked' : ''
+    }${this._options.className ? ` ${this._options.className}` : ''}`;
 
     // Create toggle button (29x29 to match navigation control)
     const toggleBtn = document.createElement('button');
@@ -805,25 +819,11 @@ export class PluginControl implements IControl, DeepLinkConsumer {
   private _createPanel(): HTMLElement {
     const panel = document.createElement('div');
     panel.className = 'plugin-control-panel';
-    panel.style.width = `${this._options.panelWidth}px`;
-
-    // Header with title and close button
-    const header = document.createElement('div');
-    header.className = 'plugin-control-header';
-
-    const title = document.createElement('span');
-    title.className = 'plugin-control-title';
-    title.textContent = this._options.title;
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'plugin-control-close';
-    closeBtn.type = 'button';
-    closeBtn.setAttribute('aria-label', 'Close panel');
-    closeBtn.innerHTML = '&times;';
-    closeBtn.addEventListener('click', () => this.collapse());
-
-    header.appendChild(title);
-    header.appendChild(closeBtn);
+    if (this._options.docked) {
+      panel.classList.add('plugin-control-panel--docked');
+    } else {
+      panel.style.width = `${this._options.panelWidth}px`;
+    }
 
     const content = document.createElement('div');
     content.className = 'plugin-control-content';
@@ -836,7 +836,27 @@ export class PluginControl implements IControl, DeepLinkConsumer {
     this._status = status;
     content.appendChild(status);
 
-    panel.appendChild(header);
+    // A docked panel shows the dock's own title and close button.
+    if (!this._options.docked) {
+      // Header with title and close button
+      const header = document.createElement('div');
+      header.className = 'plugin-control-header';
+
+      const title = document.createElement('span');
+      title.className = 'plugin-control-title';
+      title.textContent = this._options.title;
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'plugin-control-close';
+      closeBtn.type = 'button';
+      closeBtn.setAttribute('aria-label', 'Close panel');
+      closeBtn.innerHTML = '&times;';
+      closeBtn.addEventListener('click', () => this.collapse());
+
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+      panel.appendChild(header);
+    }
     panel.appendChild(content);
 
     return panel;
@@ -1047,6 +1067,7 @@ export class PluginControl implements IControl, DeepLinkConsumer {
    * Positions the panel next to the button, expanding in the appropriate direction.
    */
   private _updatePanelPosition(): void {
+    if (this._options.docked) return;
     if (!this._container || !this._panel || !this._mapContainer) return;
 
     // Get the toggle button (first child of container)

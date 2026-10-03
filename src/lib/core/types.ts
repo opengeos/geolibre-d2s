@@ -6,6 +6,14 @@ import type { GeoLibreNativeLayerRegistration } from '../geolibre/host-api';
  */
 export interface PluginControlOptions {
   /**
+   * Hand the panel to a host dock instead of floating it over the map: the
+   * panel is built but not appended to the map container (read it with
+   * `getPanel()`), the toolbar button is hidden, and the floating header,
+   * click-outside collapse and anchoring are skipped. Defaults to false.
+   */
+  docked?: boolean;
+
+  /**
    * Whether the control panel should start collapsed (showing only the toggle button)
    * @default true
    */

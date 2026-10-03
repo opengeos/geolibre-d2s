@@ -98,6 +98,28 @@ export interface GeoLibreControl {
   onRemove(...args: never[]): void;
 }
 
+/** A panel in GeoLibre's dockable side panel (the subset this plugin uses). */
+export interface GeoLibreRightPanelRegistration {
+  /** Stable id used to open and close the panel. */
+  id: string;
+  /** Title shown in the dock header and its collapsed rail. */
+  title: string | (() => string);
+  /**
+   * Where the panel docks. `replace-style` shares the Style sidebar's rail;
+   * GeoLibre also accepts the positional docks (`right-of-style`, ...).
+   */
+  dock?: string;
+  /** Preferred panel width in pixels (the host clamps it). */
+  defaultWidth?: number;
+  /** Deactivate the owning plugin when the user closes the panel. */
+  deactivatePluginOnClose?: boolean;
+  /**
+   * Populate the panel body when it becomes active. May return a cleanup the
+   * host runs when the panel is closed, or displaced by another panel.
+   */
+  render: (container: HTMLElement) => void | (() => void);
+}
+
 /**
  * The surface GeoLibre exposes to an active plugin.
  *
@@ -120,6 +142,15 @@ export interface GeoLibreAppAPI<TControl extends GeoLibreControl = GeoLibreContr
   ) => boolean;
   /** Remove a previously added control from the map. */
   removeMapControl: (control: TControl) => void;
+  /**
+   * Register a panel in the host's dockable side panel. Returns a function that
+   * unregisters it. Present on GeoLibre builds with plugin side panels.
+   */
+  registerRightPanel?: (panel: GeoLibreRightPanelRegistration) => () => void;
+  /** Make a registered side panel active and expanded; false if unknown. */
+  openRightPanel?: (id: string) => boolean;
+  /** Close a side panel. */
+  closeRightPanel?: (id: string) => void;
   /**
    * Open the host's native directory picker and resolve with the selected
    * files, or `null` if the user cancels. Present only on hosts that support
