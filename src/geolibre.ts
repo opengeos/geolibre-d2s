@@ -155,7 +155,7 @@ function teardown(app: AppAPI): void {
 export const plugin: GeoLibrePlugin<PluginControl> = {
   id: "geolibre-d2s",
   name: "Data to Science (D2S)",
-  version: "0.1.1",
+  version: "0.2.0",
   urlParameterNames: [D2S_SERVER_PARAM],
   activate(app) {
     control = control ?? createControl(app);
